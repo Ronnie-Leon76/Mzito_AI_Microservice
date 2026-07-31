@@ -81,6 +81,36 @@ docker compose --profile redis up -d --build
 
 The image runs as a non-root user and has a built-in `HEALTHCHECK`.
 
+### Deploying the container
+
+The Docker image **does not include** your `.env` file. If you deploy the built image to Azure App Service, Container Apps, Kubernetes, or run `docker run` directly, you must inject configuration as **environment variables** on the host.
+
+Minimum required settings:
+
+| Variable | Description |
+|---|---|
+| `WEBHOOK_SHARED_SECRET` | Same secret the Deluge Message Handler sends as `X-Webhook-Secret` (16+ chars) |
+| `FRESHSERVICE_DOMAIN` | e.g. `yourcompany.freshservice.com` |
+| `FRESHSERVICE_API_KEY` | Dedicated Freshservice integration API key |
+
+Examples:
+
+```bash
+# docker run
+docker run -p 8000:8000 \
+  -e WEBHOOK_SHARED_SECRET='your-long-random-secret' \
+  -e FRESHSERVICE_DOMAIN='yourcompany.freshservice.com' \
+  -e FRESHSERVICE_API_KEY='your-api-key' \
+  your-image:tag
+```
+
+```bash
+# Docker Compose on a server: copy .env.example -> .env, fill values, then:
+docker compose up -d --build
+```
+
+On Azure App Service / Container Apps, add the same three variables under **Application settings** / **Environment variables** in the portal (or your IaC template). Optional: set `ENV_FILE=/path/to/mounted/.env` if you mount a secrets file into the container instead of individual vars.
+
 ## 4. Expose the endpoint
 
 Terminate TLS in front of this service — Azure API Management, Application Gateway, Nginx, Cloudflare Tunnel, or equivalent. Cliq's `invokeUrl` requires HTTPS.
