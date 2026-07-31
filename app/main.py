@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     logger.info('Shutdown complete')
 
 
-app = FastAPI(title='Zoho Cliq to Freshservice/Freddy Middleware', version='2.0.0', lifespan=lifespan)
+app = FastAPI(title='Zoho Cliq to Mzito AI Middleware', version='2.0.0', lifespan=lifespan)
 
 
 @app.middleware('http')
