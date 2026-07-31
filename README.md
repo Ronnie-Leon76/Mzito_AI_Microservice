@@ -120,14 +120,58 @@ POST https://your-host/webhooks/cliq
 X-Webhook-Secret: <WEBHOOK_SHARED_SECRET>
 ```
 
-## 5. Configure Zoho Cliq
+## 5. Link the Mzito bot (Zoho Cliq)
 
-1. Create an organisation bot.
-2. Open the bot's **Handlers -> Message Handler**, paste in `deluge/message_handler.dg`, and update `WEBHOOK_URL` / `WEBHOOK_SECRET` at the top (or better, pull the secret from a Cliq Connection so it isn't sitting in plaintext Deluge code — Settings -> Connections -> create a "Custom Service" connection holding the secret, then reference it via `invokeUrl`'s `connection` parameter instead of a literal header).
-3. Publish the handler.
-4. Direct-message the bot to test. If replies don't look right, temporarily add `info requestBody;` in the Deluge script to inspect exactly what Cliq is sending — payload shape has drifted between Cliq releases before, and `parse_cliq_payload()` in `app/cliq.py` may need a small adjustment to match.
+This service connects to the **Mzito** bot (`Digital Division` team) on `cliq.zoho.com`.
 
-Expected response body: `{"text": "..."}`, optionally with `"card"` and `"buttons"` for rich responses (used automatically for knowledge-base results that have article links).
+| Direction | Endpoint |
+|---|---|
+| Cliq → API (Message Handler) | `POST https://<your-host>/webhooks/cliq` |
+| API → Cliq (async replies, optional) | `https://cliq.zoho.com/api/v2/bots/mzito/message` |
+| External → Cliq (incoming webhook, optional) | `https://cliq.zoho.com/api/v2/bots/mzito/incoming` |
+
+### A. Wire the Message Handler (required)
+
+This is what makes Mzito reply using Freshservice when users DM the bot.
+
+1. In Zoho Cliq go to **Integrations → Bots → Mzito → Handlers → Message Handler**.
+2. Paste the contents of `deluge/message_handler.dg`.
+3. Edit the two lines at the top:
+   - `WEBHOOK_URL` — your deployed API URL, e.g. `https://your-host.example.com/webhooks/cliq`
+   - `WEBHOOK_SECRET` — must match `WEBHOOK_SHARED_SECRET` in your API deployment env
+4. **Publish** the handler.
+5. Direct-message **Mzito** and send `help` to test.
+
+> **Tip:** Store `WEBHOOK_SECRET` in a Cliq **Connection** (Integrations → Connections) instead of hard-coding it in Deluge, then reference that connection in `invokeUrl`.
+
+### B. Configure the API side
+
+Set these in `.env` (local) or your container host env (production):
+
+```env
+WEBHOOK_SHARED_SECRET=<same secret as Deluge WEBHOOK_SECRET>
+PUBLIC_BASE_URL=https://your-host.example.com
+CLIQ_BOT_UNIQUE_NAME=mzito
+CLIQ_DC=com
+```
+
+For optional async/proactive replies from the API back into Cliq:
+
+1. In Cliq go to **Integrations → Webhook Tokens** and create a token scoped to the Mzito bot.
+2. Set `CLIQ_WEBHOOK_TOKEN=<that token>` in the API env.
+
+### C. Verify
+
+```bash
+curl -X POST https://your-host/webhooks/cliq \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: <WEBHOOK_SHARED_SECRET>" \
+  -d '{"message":{"text":"help"},"user":{"name":"Test User","email":"test@example.com"},"chat":{"id":"chat-1"}}'
+```
+
+If the curl works but Mzito does not reply in Cliq, the Message Handler is not published or `WEBHOOK_URL` / `WEBHOOK_SECRET` in Deluge do not match the API.
+
+Expected response body: `{"text": "..."}`, optionally with `"card"` and `"buttons"` for rich knowledge-base results.
 
 ## Commands
 

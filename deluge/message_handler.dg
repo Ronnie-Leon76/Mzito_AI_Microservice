@@ -1,14 +1,15 @@
-// Zoho Cliq Bot -> Message Handler
+// Mzito AI Bot (Zoho Cliq) -> Message Handler
 //
-// Paste this into: Bot settings -> Handlers -> Message Handler (Deluge code editor).
-// This is the piece that actually connects Cliq to the FastAPI service --
-// Cliq does not push messages to an external URL on its own; this script
-// runs inside Cliq every time a user messages the bot directly, and it is
-// responsible for calling out.
+// Bot: Mzito  |  Team: Digital Division  |  DC: com
+// API endpoint (outbound from this service): https://cliq.zoho.com/api/v2/bots/mzito/message
 //
-// Replace WEBHOOK_URL and WEBHOOK_SECRET below (or, better, use a Cliq
-// Connection so the secret isn't sitting in plain Deluge code -- see the
-// README section "Storing the shared secret in a Connection").
+// Paste this into: Integrations -> Bots -> Mzito -> Handlers -> Message Handler
+// This script runs inside Cliq whenever a user messages Mzito; it forwards the
+// message to the FastAPI helpdesk service and returns the reply.
+//
+// 1. Set WEBHOOK_URL to your deployed API (must be HTTPS — Cliq invokeUrl requires it).
+// 2. Set WEBHOOK_SECRET to the same value as WEBHOOK_SHARED_SECRET in the API .env / deployment env.
+// 3. Publish the handler, then DM Mzito to test.
 
 WEBHOOK_URL = "https://your-public-host.example.com/webhooks/cliq";
 WEBHOOK_SECRET = "replace-with-a-long-random-value"; // must match WEBHOOK_SHARED_SECRET
