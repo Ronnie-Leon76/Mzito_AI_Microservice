@@ -109,7 +109,7 @@ docker run -p 8000:8000 \
 docker compose up -d --build
 ```
 
-On Azure App Service / Container Apps, add the same three variables under **Application settings** / **Environment variables** in the portal (or your IaC template). Optional: set `ENV_FILE=/path/to/mounted/.env` if you mount a secrets file into the container instead of individual vars.
+On Azure App Service / Container Apps, add the same three variables under **Application settings** / **Environment variables** in the portal (or your IaC template). On **Render**, set `WEBHOOK_SHARED_SECRET` under **Environment** to the same value as `WEBHOOK_SECRET` in the Deluge script (currently `MzitoAiWebhookSecret2026`). Optional: set `ENV_FILE=/path/to/mounted/.env` if you mount a secrets file into the container instead of individual vars.
 
 ## 4. Expose the endpoint
 
@@ -165,7 +165,7 @@ For optional async/proactive replies from the API back into Cliq:
 ```bash
 curl -X POST https://your-host/webhooks/cliq \
   -H "Content-Type: application/json" \
-  -H "X-Webhook-Secret: <WEBHOOK_SHARED_SECRET>" \
+  -H "X-Webhook-Secret: MzitoAiWebhookSecret2026" \
   -d '{"message":{"text":"help"},"user":{"name":"Test User","email":"test@example.com"},"chat":{"id":"chat-1"}}'
 ```
 

@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -86,10 +87,23 @@ async def cliq_webhook(
     x_signature: str | None = Header(default=None),
 ) -> JSONResponse:
     body = await request.body()
-    verify_shared_secret(settings, x_webhook_secret)
-    verify_signature(settings, body, x_signature)
+    try:
+        payload = json.loads(body) if body else {}
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail='Invalid JSON body') from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail='JSON body must be an object')
 
-    payload = await request.json()
+    body_secret = payload.get('webhook_secret')
+    if isinstance(body_secret, str):
+        body_secret = body_secret.strip() or None
+    else:
+        body_secret = None
+
+    verify_shared_secret(settings, x_webhook_secret, body_secret)
+    verify_signature(settings, body, x_signature)
+    payload.pop('webhook_secret', None)
+
     incoming = parse_cliq_payload(payload)
     logger.info('Cliq message received chat_id=%s text_len=%s', incoming.chat_id, len(incoming.text))
 

@@ -6,11 +6,9 @@ from .models import CliqIncomingMessage, CliqUser, KBArticle
 def parse_cliq_payload(payload: dict[str, Any]) -> CliqIncomingMessage:
     """Accepts common Cliq Message Handler payload variations.
 
-    The Deluge Message Handler in deluge/message_handler.dg forwards the
-    handler's own `message`, `user` and `chat` context maps verbatim as the
-    JSON body of the invokeUrl call, so this mirrors that shape. Keep the raw
-    payload logged in development and adjust selectors here if you change
-    what the Deluge script forwards.
+    The Deluge Message Handler forwards the user's plain-text `message` string plus
+    the handler's `user` and `chat` context maps. Cliq passes `message` as text, not
+    as a nested map — see deluge/message_handler.dg.
     """
     message = payload.get('message') or {}
     sender = payload.get('user') or payload.get('sender') or message.get('sender') or {}

@@ -6,13 +6,17 @@ from fastapi import HTTPException, status
 from .config import Settings
 
 
-def verify_shared_secret(settings: Settings, supplied: str | None) -> None:
+def verify_shared_secret(
+    settings: Settings,
+    header_secret: str | None,
+    body_secret: str | None = None,
+) -> None:
     """Primary auth: a long random value the Deluge Message Handler sends as
-    X-Webhook-Secret on every invokeUrl call. This is the only auth Cliq's
-    invokeUrl task gives you out of the box (it can set arbitrary headers),
-    so treat this secret as the real credential and rotate it if it ever
-    leaks into a log or a shared script.
+    X-Webhook-Secret on every invokeUrl call. Cliq Deluge sometimes drops
+    custom headers, so the same value may also be sent in the JSON body as
+    webhook_secret — either location is accepted.
     """
+    supplied = header_secret or body_secret
     if not supplied or not hmac.compare_digest(supplied, settings.webhook_shared_secret):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid webhook secret')
 

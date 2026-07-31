@@ -11,18 +11,28 @@
 // 2. Set WEBHOOK_SECRET to the same value as WEBHOOK_SHARED_SECRET in the API .env / deployment env.
 // 3. Publish the handler, then DM Mzito to test.
 
-WEBHOOK_URL = "https://your-public-host.example.com/webhooks/cliq";
-WEBHOOK_SECRET = "replace-with-a-long-random-value"; // must match WEBHOOK_SHARED_SECRET
+WEBHOOK_URL = "https://mzitoaiservice.onrender.com/webhooks/cliq";
+WEBHOOK_SECRET = "MzitoAiWebhookSecret2026"; // must match WEBHOOK_SHARED_SECRET on Render (16+ chars)
 
 response = Map();
 
-// `message` and `user` are provided by Cliq's Message Handler context.
+// In Cliq Message Handlers, `message` is the plain text string (not a Map).
+// `user` and `chat` are Maps — use .get("key") on those.
+messageText = message;
+messageMap = Map();
+messageMap.put("text", messageText);
+
 requestBody = Map();
-requestBody.put("text", message.get("text"));
-requestBody.put("message", message);
+requestBody.put("text", messageText);
+requestBody.put("message", messageMap);
 requestBody.put("user", user);
 requestBody.put("chat_id", chat.get("id"));
 requestBody.put("chat", chat);
+requestBody.put("webhook_secret", WEBHOOK_SECRET);
+
+headers = Map();
+headers.put("Content-Type", "application/json");
+headers.put("X-Webhook-Secret", WEBHOOK_SECRET);
 
 try
 {
@@ -31,7 +41,7 @@ try
 		url: WEBHOOK_URL
 		type: POST
 		parameters: requestBody.toString()
-		headers: {"Content-Type": "application/json", "X-Webhook-Secret": WEBHOOK_SECRET}
+		headers: headers
 	];
 
 	parsed = apiResponse.toMap();
