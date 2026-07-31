@@ -1,0 +1,14 @@
+services:
+  helpdesk-bot:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # Optional: only start this if SESSION_BACKEND=redis in .env (needed once you
+  # run more than one replica). `docker compose --profile redis up -d --build`
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    profiles: ["redis"]

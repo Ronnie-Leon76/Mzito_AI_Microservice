@@ -1,0 +1,60 @@
+// Zoho Cliq Bot -> Message Handler
+//
+// Paste this into: Bot settings -> Handlers -> Message Handler (Deluge code editor).
+// This is the piece that actually connects Cliq to the FastAPI service --
+// Cliq does not push messages to an external URL on its own; this script
+// runs inside Cliq every time a user messages the bot directly, and it is
+// responsible for calling out.
+//
+// Replace WEBHOOK_URL and WEBHOOK_SECRET below (or, better, use a Cliq
+// Connection so the secret isn't sitting in plain Deluge code -- see the
+// README section "Storing the shared secret in a Connection").
+
+WEBHOOK_URL = "https://your-public-host.example.com/webhooks/cliq";
+WEBHOOK_SECRET = "replace-with-a-long-random-value"; // must match WEBHOOK_SHARED_SECRET
+
+response = Map();
+
+// `message` and `user` are provided by Cliq's Message Handler context.
+requestBody = Map();
+requestBody.put("text", message.get("text"));
+requestBody.put("message", message);
+requestBody.put("user", user);
+requestBody.put("chat_id", chat.get("id"));
+requestBody.put("chat", chat);
+
+try
+{
+	apiResponse = invokeUrl
+	[
+		url: WEBHOOK_URL
+		type: POST
+		parameters: requestBody.toString()
+		headers: {"Content-Type": "application/json", "X-Webhook-Secret": WEBHOOK_SECRET}
+	];
+
+	parsed = apiResponse.toMap();
+
+	if(parsed.containsKey("text"))
+	{
+		response.put("text", parsed.get("text"));
+	}
+	if(parsed.containsKey("card"))
+	{
+		response.put("card", parsed.get("card"));
+	}
+	if(parsed.containsKey("buttons"))
+	{
+		response.put("buttons", parsed.get("buttons"));
+	}
+	if(response.size() == 0)
+	{
+		response.put("text", "Sorry, I did not get a valid reply from the helpdesk service. Please try again.");
+	}
+}
+catch (e)
+{
+	response.put("text", "The helpdesk assistant is temporarily unavailable. Please try again shortly, or use the Freshservice portal.");
+}
+
+return response;
