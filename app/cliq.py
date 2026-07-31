@@ -19,14 +19,13 @@ def parse_cliq_payload(payload: dict[str, Any]) -> CliqIncomingMessage:
         or (payload.get('command') or {}).get('arguments')
         or ''
     )
-    email = sender.get('email') or sender.get('email_id')
     chat = payload.get('chat') or {}
     return CliqIncomingMessage(
         text=str(text).strip(),
         user=CliqUser(
             id=str(sender.get('id') or sender.get('user_id') or '') or None,
             name=sender.get('name') or sender.get('first_name') or 'User',
-            email=email,
+            email=sender.get('email') or sender.get('email_id'),
         ),
         chat_id=str(payload.get('chat_id') or chat.get('id') or chat.get('chat_id') or '') or None,
         raw=payload,

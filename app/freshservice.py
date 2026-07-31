@@ -80,10 +80,80 @@ class FreshserviceClient:
         return re.sub(r'\s+', ' ', text)
 
     async def search_solutions(self, query: str, limit: int = 3) -> list[KBArticle]:
-        payload = await self._request('GET', f'/api/v2/search/solutions?term={quote_plus(query)}')
-        records = payload.get('solutions') or payload.get('articles') or []
+        query = query.strip()
+        if not query:
+            return []
+
+        # KB 2.0 accounts expose solution_articles/search; older accounts 404 here.
+        try:
+            payload = await self._request(
+                'GET',
+                f'/api/v2/solution_articles/search?query={quote_plus(query)}',
+            )
+            return self._articles_from_records(payload, limit)
+        except FreshserviceError as exc:
+            if exc.status_code != 404:
+                raise
+            logger.info('solution_articles/search unavailable; using legacy solutions API')
+
+        return await self._search_solutions_legacy(query, limit)
+
+    async def _search_solutions_legacy(self, query: str, limit: int) -> list[KBArticle]:
+        """Scan published articles under legacy /api/v2/solutions/* folders."""
+        folders_payload = await self._request('GET', '/api/v2/solutions/folders')
+        folders = folders_payload.get('folders') or []
+        needles = [part for part in query.lower().split() if part]
+
+        matches: list[tuple[int, dict]] = []
+        skip_folders = {'drafts', 'rough drafts'}
+
+        for folder in folders:
+            if folder.get('deleted'):
+                continue
+            folder_name = (folder.get('name') or '').strip().lower()
+            if folder_name in skip_folders:
+                continue
+
+            folder_id = folder['id']
+            page = 1
+            while True:
+                payload = await self._request(
+                    'GET',
+                    f'/api/v2/solutions/articles?folder_id={folder_id}&per_page=100&page={page}',
+                )
+                articles = payload.get('articles') or []
+                for item in articles:
+                    if item.get('status') != 1:
+                        continue
+                    score = self._article_match_score(item, needles)
+                    if score > 0:
+                        matches.append((score, item))
+                if len(articles) < 100:
+                    break
+                page += 1
+
+        matches.sort(key=lambda pair: pair[0], reverse=True)
+        return self._articles_from_legacy_records([item for _, item in matches[:limit]])
+
+    def _article_match_score(self, item: dict, needles: list[str]) -> int:
+        title = (item.get('title') or '').lower()
+        description = self._plain_text(item.get('description') or item.get('description_text')).lower()
+        haystack = f'{title} {description}'
+        score = 0
+        for needle in needles:
+            if needle in title:
+                score += 3
+            elif needle in haystack:
+                score += 1
+        return score
+
+    def _articles_from_records(self, payload: dict, limit: int) -> list[KBArticle]:
+        records = payload.get('solution_articles') or payload.get('articles') or payload.get('solutions') or []
+        return self._articles_from_legacy_records(records[:limit])
+
+    def _articles_from_legacy_records(self, records: list[dict]) -> list[KBArticle]:
         results: list[KBArticle] = []
-        for item in records[:limit]:
+        for item in records:
             article_id = int(item['id'])
             results.append(KBArticle(
                 id=article_id,

@@ -8,26 +8,50 @@
 // message to the FastAPI helpdesk service and returns the reply.
 //
 // 1. Set WEBHOOK_URL to your deployed API (must be HTTPS — Cliq invokeUrl requires it).
-// 2. Set WEBHOOK_SECRET to the same value as WEBHOOK_SHARED_SECRET in the API .env / deployment env.
+// 2. Set WEBHOOK_SECRET to the same value as WEBHOOK_SHARED_SECRET on Render.
 // 3. Publish the handler, then DM Mzito to test.
 
 WEBHOOK_URL = "https://mzitoaiservice.onrender.com/webhooks/cliq";
-WEBHOOK_SECRET = "MzitoAiWebhookSecret2026"; // must match WEBHOOK_SHARED_SECRET on Render (16+ chars)
+WEBHOOK_SECRET = "replace-with-a-long-random-value"; // must match WEBHOOK_SHARED_SECRET on Render
 
 response = Map();
 
 // In Cliq Message Handlers, `message` is the plain text string (not a Map).
-// `user` and `chat` are Maps — use .get("key") on those.
 messageText = message;
 messageMap = Map();
 messageMap.put("text", messageText);
 
+// Build a clean JSON-safe user object — do not pass Cliq's raw `user` map through
+// toString(); it can break JSON serialization.
+userPayload = Map();
+if(user.containsKey("id"))
+{
+	userPayload.put("id", user.get("id").toString());
+}
+displayName = "User";
+if(user.containsKey("first_name") && user.get("first_name") != null)
+{
+	displayName = user.get("first_name");
+	if(user.containsKey("last_name") && user.get("last_name") != null)
+	{
+		displayName = displayName + " " + user.get("last_name");
+	}
+}
+userPayload.put("name", displayName);
+if(user.containsKey("email_id"))
+{
+	userPayload.put("email", user.get("email_id"));
+}
+else if(user.containsKey("email"))
+{
+	userPayload.put("email", user.get("email"));
+}
+
 requestBody = Map();
 requestBody.put("text", messageText);
 requestBody.put("message", messageMap);
-requestBody.put("user", user);
-requestBody.put("chat_id", chat.get("id"));
-requestBody.put("chat", chat);
+requestBody.put("user", userPayload);
+requestBody.put("chat_id", chat.get("id").toString());
 requestBody.put("webhook_secret", WEBHOOK_SECRET);
 
 headers = Map();
@@ -60,7 +84,12 @@ try
 	}
 	if(response.size() == 0)
 	{
-		response.put("text", "Sorry, I did not get a valid reply from the helpdesk service. Please try again.");
+		errorText = "Sorry, I did not get a valid reply from the helpdesk service.";
+		if(parsed.containsKey("detail"))
+		{
+			errorText = errorText + " (" + parsed.get("detail") + ")";
+		}
+		response.put("text", errorText);
 	}
 }
 catch (e)

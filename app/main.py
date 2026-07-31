@@ -53,12 +53,16 @@ async def request_context_middleware(request: Request, call_next):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    if request.url.path == '/webhooks/cliq':
+        return JSONResponse(status_code=exc.status_code, content={'text': str(exc.detail)})
     return JSONResponse(status_code=exc.status_code, content={'detail': exc.detail})
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception('Unhandled error on %s', request.url.path)
+    if request.url.path == '/webhooks/cliq':
+        return JSONResponse(status_code=500, content={'text': 'Internal error — please try again shortly.'})
     return JSONResponse(status_code=500, content={'detail': 'Internal error'})
 
 

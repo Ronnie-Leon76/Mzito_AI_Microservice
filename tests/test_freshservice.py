@@ -50,6 +50,33 @@ def test_route_ticket_matches_keyword():
     assert category == 'Network'
 
 
+@pytest.mark.asyncio
+async def test_search_solutions_uses_legacy_api_when_modern_search_missing():
+    with respx.mock:
+        respx.get('https://example.freshservice.com/api/v2/solution_articles/search').mock(
+            return_value=httpx.Response(404, text='not found')
+        )
+        respx.get('https://example.freshservice.com/api/v2/solutions/folders').mock(
+            return_value=httpx.Response(200, json={'folders': [{'id': 10, 'name': 'FAQ', 'deleted': False}]})
+        )
+        respx.get('https://example.freshservice.com/api/v2/solutions/articles').mock(
+            return_value=httpx.Response(200, json={
+                'articles': [{
+                    'id': 99,
+                    'status': 1,
+                    'title': 'Reset VPN password',
+                    'description': '<p>Steps to reset your VPN password</p>',
+                    'url': 'https://example.freshservice.com/support/solutions/articles/99',
+                }]
+            })
+        )
+        client = FreshserviceClient(FakeSettings())
+        results = await client.search_solutions('vpn password', limit=3)
+        assert len(results) == 1
+        assert results[0].title == 'Reset VPN password'
+        await client.close()
+
+
 def test_route_ticket_no_match_returns_none():
     group_id, category = route_ticket('printer is jammed', {'vpn': {'group_id': 12}})
     assert group_id is None
